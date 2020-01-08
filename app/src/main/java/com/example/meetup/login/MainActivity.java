@@ -27,6 +27,7 @@ import com.facebook.appevents.AppEventsLogger;
 import com.example.meetup.databinding.ActivityMainBinding;
 import com.example.meetup.model.OnClickHandlerInterface;
 import com.facebook.login.LoginResult;
+import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -34,15 +35,21 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseException;
+import com.google.firebase.FirebaseTooManyRequestsException;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthProvider;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -58,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     GoogleSignInClient mGoogleSignInClient;
     CallbackManager callbackManager;
     OnClickHandlerInterface onClickHandlerInterface;
+    String mVerificationId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         activityMainBinding.signInButton.setOnClickListener(this);
         activityMainBinding.submit.setOnClickListener(this);
         activityMainBinding.signu.setOnClickListener(this);
+        activityMainBinding.send.setOnClickListener(this);
         mGoogleSignInClient = SessionClass.getSession().getGoogleSigninClient(this);
         callbackManager = CallbackManager.Factory.create();
     }
@@ -145,16 +154,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onStart();
         if (GoogleSignIn.getLastSignedInAccount(this) != null || AccessToken.getCurrentAccessToken() != null || mAuth.getCurrentUser()!=null)
             navigateToSchedule(SessionClass.getSession().getUser(this, Constants.USER_KEY));
-
     }
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.submit:
-                if (validation()) {
-                    login();
-                }
+                    String code=activityMainBinding.passwordedit.getText().toString().trim();
+                    if(code.isEmpty() || code.length()<6){
+                        activityMainBinding.passwordedit.setText("Invalid");
+                        activityMainBinding.passwordedit.requestFocus();
+                        return;
+                    }
+                    verifyCode(code);
                 break;
             case R.id.sign_in_button:
                 signIn();
@@ -165,8 +177,82 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.signu:
                 navigateToSignu();
                 break;
+            case R.id.send:
+                sendVerificationCode();
+                break;
+
         }
     }
+
+    private void verifyCode(String code) {
+        PhoneAuthCredential credential = PhoneAuthProvider.getCredential(mVerificationId, code);
+        signInWithPhoneAuthCredential(credential);
+    }
+
+    private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            AuthResult authResult = task.getResult();
+                            navigateToSchedule(new User(authResult.getUser().getDisplayName(), authResult.getUser().getEmail()));
+                            // ...
+                        } else {
+                            // Sign in failed, display a message and update the UI
+
+                            if (task.getException() instanceof FirebaseAuthInvalidCredentialsException) {
+                                // The verification code entered was invalid
+                            }
+                        }
+                    }
+                });
+    }
+
+    private void sendVerificationCode() {
+        PhoneAuthProvider.getInstance().verifyPhoneNumber(
+                activityMainBinding.usernameedit.getText().toString(),        // Phone number to verify
+                60,                 // Timeout duration
+                TimeUnit.SECONDS,   // Unit of timeout
+                this,               // Activity (for callback binding)
+                mCallbacks);
+    }
+
+    private PhoneAuthProvider.OnVerificationStateChangedCallbacks mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+
+        @Override
+        public void onVerificationCompleted(PhoneAuthCredential credential) {
+            String code=credential.getSmsCode();
+            if(code!=null){
+                activityMainBinding.passwordedit.setText(code);
+            }
+        }
+
+        @Override
+        public void onVerificationFailed(FirebaseException e) {
+            // This callback is invoked in an invalid request for verification is made,
+            // for instance if the the phone number format is not valid.
+
+            if (e instanceof FirebaseAuthInvalidCredentialsException) {
+
+                Toast.makeText(getApplicationContext(),"Invalid Number",Toast.LENGTH_LONG).show();
+                // Invalid request
+                // ...
+            } else if (e instanceof FirebaseTooManyRequestsException) {
+                Toast.makeText(getApplicationContext(),"The SMS quota for the project has been exceeded",Toast.LENGTH_LONG).show();
+
+            }
+
+            // Show a message and update the UI
+            // ...
+        }
+
+        @Override
+        public void onCodeSent(String verificationId,
+                               PhoneAuthProvider.ForceResendingToken token) {
+            mVerificationId = verificationId;
+        }
+    };
 
     private void navigateToSignu() {
     startActivity(new Intent(this,SignupActivity.class));
