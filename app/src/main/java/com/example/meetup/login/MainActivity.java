@@ -7,31 +7,26 @@ import androidx.databinding.DataBindingUtil;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Patterns;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Toast;
 
 import com.example.meetup.R;
 import com.example.meetup.model.User;
-import com.example.meetup.scheduleActivity;
+import com.example.meetup.activity.scheduleActivity;
 import com.example.meetup.utility.Constants;
 import com.example.meetup.utility.SessionClass;
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
-import com.facebook.FacebookSdk;
-import com.facebook.Profile;
-import com.facebook.appevents.AppEventsLogger;
 
 import com.example.meetup.databinding.ActivityMainBinding;
 import com.example.meetup.model.OnClickHandlerInterface;
 import com.facebook.login.LoginResult;
-import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -74,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initialize();
     }
 
+
     private void initialize() {
         mAuth = FirebaseAuth.getInstance();
         //activityMainBinding.setClickHandler((OnClickHandlerInterface) this);
@@ -92,22 +88,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
-    private void login() {
-        mAuth.signInWithEmailAndPassword(activityMainBinding.usernameedit.getText().toString(), activityMainBinding.passwordedit.getText().toString())
-                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            navigateToSchedule(new User(mAuth.getCurrentUser().getDisplayName(), mAuth.getCurrentUser().getEmail()));
-                        }
-                    }
 
-                });
-    }
-
-    private void navigateToSchedule(User user) {
+    private void navigateToSchedule(User user,String status) {
         SessionClass.getSession().setUser(this, user, Constants.USER_KEY);
-        startActivity(new Intent(this, scheduleActivity.class));
+        Intent intent=new Intent(this, scheduleActivity.class);
+        intent.putExtra("status",status);
+        startActivity(intent);
         finish();
     }
 
@@ -141,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
             // Signed in successfully, show authenticated UI.
             //updateUI(account);
-            navigateToSchedule(new User(account.getDisplayName(), account.getEmail()));
+            navigateToSchedule(new User(account.getDisplayName(), account.getEmail()),"true");
         } catch (ApiException e) {
             // The ApiException status code indicates the detailed failure reason.
             // Please refer to the GoogleSignInStatusCodes class reference for more information.
@@ -153,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onStart() {
         super.onStart();
         if (GoogleSignIn.getLastSignedInAccount(this) != null || AccessToken.getCurrentAccessToken() != null || mAuth.getCurrentUser()!=null)
-            navigateToSchedule(SessionClass.getSession().getUser(this, Constants.USER_KEY));
+            navigateToSchedule(SessionClass.getSession().getUser(this, Constants.USER_KEY),"");
     }
 
     @Override
@@ -185,8 +171,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void verifyCode(String code) {
-        PhoneAuthCredential credential = PhoneAuthProvider.getCredential(mVerificationId, code);
-        signInWithPhoneAuthCredential(credential);
+        try {
+            PhoneAuthCredential credential = PhoneAuthProvider.getCredential(mVerificationId, code);
+            signInWithPhoneAuthCredential(credential);
+        }catch (Exception e){
+            Toast toast = Toast.makeText(getApplicationContext(), "Verification Code is wrong, try again", Toast.LENGTH_SHORT);
+            toast.show();
+        }
     }
 
     private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
@@ -195,8 +186,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
+                            SessionClass.getSession().setPhoneNumer(MainActivity.this,activityMainBinding.usernameedit.getText().toString(),Constants.NUMBER_KEY);
                             AuthResult authResult = task.getResult();
-                            navigateToSchedule(new User(authResult.getUser().getDisplayName(), authResult.getUser().getEmail()));
+                            navigateToSchedule(new User(authResult.getUser().getDisplayName(), authResult.getUser().getEmail()),"false");
                             // ...
                         } else {
                             // Sign in failed, display a message and update the UI
@@ -216,6 +208,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 TimeUnit.SECONDS,   // Unit of timeout
                 this,               // Activity (for callback binding)
                 mCallbacks);
+        Toast.makeText(this,"Verification code has been sent",Toast.LENGTH_SHORT).show();
     }
 
     private PhoneAuthProvider.OnVerificationStateChangedCallbacks mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
@@ -271,7 +264,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 if (task.isSuccessful()) {
                                     AuthResult authResult = task.getResult();
-                                    navigateToSchedule(new User(authResult.getUser().getDisplayName(), authResult.getUser().getEmail()));
+                                    navigateToSchedule(new User(authResult.getUser().getDisplayName(), authResult.getUser().getEmail()),"true");
                                 }
                             }
 

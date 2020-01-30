@@ -22,6 +22,18 @@ public class SessionClass {
         return sessionClass;
     }
 
+    public void setPhoneNumer(Context context, String number, String key){
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        prefsEditor.putString(key, number);
+        prefsEditor.apply();
+    }
+    public String getNumber(Context context, String key){
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        return  mPrefs.getString(key, "");
+
+    }
+
     public void setUser(Context context, User user, String key){
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor prefsEditor = mPrefs.edit();
