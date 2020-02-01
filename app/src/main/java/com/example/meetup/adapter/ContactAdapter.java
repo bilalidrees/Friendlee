@@ -25,9 +25,9 @@ import java.util.List;
 public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHolder> implements  Filterable {
 
     public Context context;
-    Click  click;
-    public ArrayList<Contact> mcontactlist,contactListFiltered;
-
+    public static Click  click;
+    public static ArrayList<Contact> mcontactlist,contactListFiltered;
+    public static int mItemSelected=-1;
     public ContactAdapter(Context context, ArrayList<Contact> contactArrayList, Click click) {
         this.context = context;
         this.click=click;
@@ -39,7 +39,6 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
     public Filter getFilter() {
         return exampleFilter;
     }
-
     //search view feature implementation
     private Filter exampleFilter = new Filter() {
         @Override
@@ -61,6 +60,7 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
         }
 
 
+
         @Override
         protected void publishResults(CharSequence constraint, FilterResults results) {
             mcontactlist.clear();
@@ -79,16 +79,19 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
     }
 
     @Override
+    public int getItemViewType(int position) {
+        return super.getItemViewType(position);
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return super.getItemId(position);
+    }
+
+    @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         final Contact contact=mcontactlist.get(position);
-        holder.bind(contact);
-        holder.binding.rel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                click.onclick(contact,holder.binding,position);
-            }
-        });
-
+        holder.bind(contact,holder.getAdapterPosition());
     }
 
     @Override
@@ -96,10 +99,7 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
         return mcontactlist.size();
     }
 
-
-
-    //video type chat view holder
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         //declaration
         ContactItemBinding binding;
         //constructor
@@ -107,8 +107,41 @@ public class ContactAdapter extends RecyclerView.Adapter<ContactAdapter.ViewHold
             super(itemView.getRoot());
             this.binding=itemView;
         }
-        public void bind(Contact obj) {
+
+        public void bind(Contact obj, final int pos) {
             binding.setContact(obj);
+            if (mItemSelected == -1) {
+                binding.rad.setChecked(false);
+                binding.rad.setSelected(false);
+            } else {
+                if (mItemSelected == getAdapterPosition()) {
+                    binding.rad.setChecked(true);
+                    binding.rad.setSelected(true);
+                } else {
+                    binding.rad.setChecked(false);
+                    binding.rad.setSelected(false);
+                }
+            }
+            binding.rel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (mItemSelected != getAdapterPosition()) {
+                        notifyItemChanged(mItemSelected);
+                        mItemSelected = getAdapterPosition();
+                    }
+                    click.onclick(mcontactlist.get(pos),binding,pos);
+                }
+            });
+            binding.rad.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (mItemSelected != getAdapterPosition()) {
+                        notifyItemChanged(mItemSelected);
+                        mItemSelected = getAdapterPosition();
+                    }
+                    click.onclick(mcontactlist.get(pos),binding,pos);
+                }
+            });
         }
     }
 

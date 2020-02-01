@@ -121,20 +121,21 @@ public class contactActivity extends AppCompatActivity implements View.OnClickLi
 
     private void setArrayList(Contact contact, ContactItemBinding binding, int position) {
         userpos = position;
-        if (!mcontactlist.get(position).isSelected()) {
-            activityContactBinding.rg.setVisibility(View.VISIBLE);
-            binding.rad.setChecked(true);
-            mcontactlist.get(position).setSelected(true);
-            markedContactList.add(mcontactlist.get(position));
-            binding.rad.setSelected(true);
-        } else {
-            binding.rad.setChecked(false);
-            mcontactlist.get(position).setSelected(false);
-            markedContactList.remove(mcontactlist.get(position));
-            binding.rad.setSelected(false);
+            if (!mcontactlist.get(position).isSelected()) {
+                activityContactBinding.rg.setVisibility(View.VISIBLE);
+                binding.rad.setChecked(true);
+                mcontactlist.get(position).setSelected(true);
+                markedContactList.add(mcontactlist.get(position));
+                binding.rad.setSelected(true);
+            } else {
+                binding.rad.setChecked(false);
+                mcontactlist.get(position).setSelected(false);
+                markedContactList.remove(mcontactlist.get(position));
+                binding.rad.setSelected(false);
+                activityContactBinding.rg.setVisibility(View.GONE);
+            }
         }
 
-    }
 
     private ArrayList<Contact> getContact() {
         mcontactlist = new ArrayList<>();
